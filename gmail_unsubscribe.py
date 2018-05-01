@@ -12,6 +12,14 @@ import re
 import urlfetch
 
 
+class mcolors:
+    OKBLUE = '\033[94m'
+    OKGREEN = '\033[92m'
+    WARNING = '\033[93m'
+    FAIL = '\033[91m'
+    ENDC = '\033[0m'
+
+
 def get_gmail_service():
     SCOPES = 'https://www.googleapis.com/auth/gmail.modify'
     store = file.Storage('credentials.json')
@@ -100,16 +108,25 @@ def unsubscribe(service, messages, label_id):
         msg = get_message(service, msg_id)
         sender = get_sender(msg).strip().replace("\"", '')
         url = get_unsubscribe_url(msg)
-        if url:
-            print("Unsubscribing from: {}".format(sender))
-            response = urlfetch.get(url)
+
+        if url and not sender in seen:
+            try:
+                response = urlfetch.get(url)
+                seen.add(sender)
+                print("{}Unsubscribed from{}: {}".format(mcolors.OKGREEN, mcolors.ENDC, sender))
+            except urlfetch.UrlfetchException as error:
+                print("{}Unsubscribe timeout{}: {}".format(mcolors.FAIL, mcolors.ENDC, sender))
         else:
-            print("No Unsubscribe Header (Deleting Only): {}".format(sender))
+            print("{}Could not unsubscribe{}: {}".format(mcolors.WARNING, mcolors.ENDC, sender))
+
         unlabel_message(service, msg_id, label_id)
         delete_message(service, msg_id)
+        print("    {}Finished Cleanup{}\n".format(mcolors.OKBLUE, mcolors.ENDC))
 
 
 if __name__ == '__main__':
+    # Track Senders
+    seen = set()
     # Set label
     label = 'Unsubscribe'
     # Get Service
