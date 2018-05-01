@@ -106,16 +106,20 @@ def unsubscribe(service, messages, label_id):
     for item in messages:
         msg_id = item['id']
         msg = get_message(service, msg_id)
-        sender = get_sender(msg).strip().replace("\"", '')
+        raw_sender = get_sender(msg)
+        sender = raw_sender.strip().replace("\"", '') if raw_sender else 'Invalid Sender'
         url = get_unsubscribe_url(msg)
 
-        if url and not sender in seen:
-            try:
-                response = urlfetch.get(url, timeout=10)
-                seen.add(sender)
-                print("{}Unsubscribed from{}: {}".format(mcolors.OKGREEN, mcolors.ENDC, sender))
-            except urlfetch.UrlfetchException as error:
-                print("{}Unsubscribe timeout{}: {}".format(mcolors.FAIL, mcolors.ENDC, sender))
+        if url:
+            if not sender in seen:
+                try:
+                    response = urlfetch.get(url, timeout=10)
+                    seen.add(sender)
+                    print("{}Unsubscribed from{}: {}".format(mcolors.OKGREEN, mcolors.ENDC, sender))
+                except urlfetch.UrlfetchException as error:
+                    print("{}Unsubscribe timeout{}: {}".format(mcolors.FAIL, mcolors.ENDC, sender))
+            else:
+                print("{}Already Unsubscribed from{}: {}".format(mcolors.OKGREEN, mcolors.ENDC, sender))
         else:
             print("{}Could not unsubscribe{}: {}".format(mcolors.WARNING, mcolors.ENDC, sender))
 
