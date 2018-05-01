@@ -15,3 +15,9 @@
 1. Label any message in Gmail that you want to be unsubscribed from with the label "Unsubscribe"
 2. Run: ```pip install -r reqs.txt```
 3. Run: ```python gmail_unsubscribe.py```
+
+## Output Explanation
+1. "Unsubscribed from: Sender_Name" -> Unsubscription was successful (Finished work)
+2. "Could not unsubscribe: Sender_name" -> There was no unsubscribe link in the header (Nothing to do)
+3. "Already Unsubscribed from: Sender_name" -> Already unsubscribed successfully during this session (Skipping)
+4. "Finished Cleanup" -> Removed the "Unsubscribe" label and deleted the message
