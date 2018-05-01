@@ -49,7 +49,7 @@ def get_message(service, msg_id):
     try:
         message = service.users().messages().get(userId='me', id=msg_id,
                                              format='raw').execute()
-        msg_str = base64.urlsafe_b64decode(message['raw'].encode('ASCII')).decode('utf-8')
+        msg_str = base64.urlsafe_b64decode(message['raw'].encode('ASCII')).decode('utf-8', 'ignore')
         return msg_str
     except errors.HttpError as error:
         print('An error occurred getting a message: %s' % error)
@@ -98,14 +98,15 @@ def unsubscribe(service, messages, label_id):
     for item in messages:
         msg_id = item['id']
         msg = get_message(service, msg_id)
+        sender = get_sender(msg).strip().replace("\"", '')
         url = get_unsubscribe_url(msg)
         if url:
-            sender = get_sender(msg).strip().replace("\"", '')
+            print("Unsubscribing from: {}".format(sender))
             response = urlfetch.get(url)
-            unlabel_message(service, msg_id, label_id)
-            delete_message(service, msg_id)
-            print("Unsubscribed from: {}".format(sender))
-
+        else:
+            print("No Unsubscribe Header (Deleting Only): {}".format(sender))
+        unlabel_message(service, msg_id, label_id)
+        delete_message(service, msg_id)
 
 
 if __name__ == '__main__':
@@ -117,7 +118,7 @@ if __name__ == '__main__':
     label_id = get_label_id(gmail, label)
     # Get Unsubscribe messages
     messages = get_messages_with_label(gmail, label_id)
-    while len(messages) > 0:  
+    while len(messages) > 0:
         # Unsubscribe
         unsubscribe(gmail, messages, label_id)
         messages = get_messages_with_label(gmail, label_id)
