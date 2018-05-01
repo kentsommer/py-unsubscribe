@@ -47,7 +47,7 @@ def get_label_id(service, label_name):
 def get_messages_with_label(service, label_id):
     try:
         message_dict = service.users().messages().list(userId='me', labelIds=[label_id,]).execute()
-        messages = message_dict['messages']
+        messages = message_dict.get('messages', [])
         return messages
     except errors.HttpError as error:
         print('An error occurred finding messages: %s' % error)
