@@ -111,7 +111,7 @@ def unsubscribe(service, messages, label_id):
 
         if url and not sender in seen:
             try:
-                response = urlfetch.get(url)
+                response = urlfetch.get(url, timeout=10)
                 seen.add(sender)
                 print("{}Unsubscribed from{}: {}".format(mcolors.OKGREEN, mcolors.ENDC, sender))
             except urlfetch.UrlfetchException as error:
