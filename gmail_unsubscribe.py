@@ -46,7 +46,10 @@ def get_label_id(service, label_name):
 
 def get_messages_with_label(service, label_id):
     try:
-        message_dict = service.users().messages().list(userId='me', labelIds=[label_id,]).execute()
+        message_dict = service.users().messages().list(
+            userId='me', labelIds=[
+                label_id,
+            ]).execute()
         messages = message_dict.get('messages', [])
         return messages
     except errors.HttpError as error:
@@ -55,9 +58,10 @@ def get_messages_with_label(service, label_id):
 
 def get_message(service, msg_id):
     try:
-        message = service.users().messages().get(userId='me', id=msg_id,
-                                             format='raw').execute()
-        msg_str = base64.urlsafe_b64decode(message['raw'].encode('ASCII')).decode('utf-8', 'ignore')
+        message = service.users().messages().get(
+            userId='me', id=msg_id, format='raw').execute()
+        msg_str = base64.urlsafe_b64decode(
+            message['raw'].encode('ASCII')).decode('utf-8', 'ignore')
         return msg_str
     except errors.HttpError as error:
         print('An error occurred getting a message: %s' % error)
@@ -87,7 +91,8 @@ def get_sender(msg_str):
 
 
 def get_unsubscribe_url(msg_str):
-    pattern = re.compile(r"^list\-unsubscribe:(.|\r\n\s)+<(https?:\/\/[^>]+)>", re.M | re.I)
+    pattern = re.compile(r"^list\-unsubscribe:(.|\r\n\s)+<(https?:\/\/[^>]+)>",
+                         re.M | re.I)
     match = pattern.search(msg_str)
     if match:
         return match.group(2)
@@ -95,7 +100,12 @@ def get_unsubscribe_url(msg_str):
 
 
 def unlabel_message(service, msg_id, label_id):
-    service.users().messages().modify(userId='me', id=msg_id, body={ 'removeLabelIds': [label_id,]}).execute()
+    service.users().messages().modify(
+        userId='me', id=msg_id, body={
+            'removeLabelIds': [
+                label_id,
+            ]
+        }).execute()
 
 
 def delete_message(service, msg_id):
@@ -107,7 +117,8 @@ def unsubscribe(service, messages, label_id):
         msg_id = item['id']
         msg = get_message(service, msg_id)
         raw_sender = get_sender(msg)
-        sender = raw_sender.strip().replace("\"", '') if raw_sender else 'Invalid Sender'
+        sender = raw_sender.strip().replace(
+            "\"", '') if raw_sender else 'Invalid Sender'
         url = get_unsubscribe_url(msg)
 
         if url:
@@ -115,17 +126,22 @@ def unsubscribe(service, messages, label_id):
                 try:
                     response = urlfetch.get(url, timeout=10)
                     seen.add(sender)
-                    print("{}Unsubscribed from{}: {}".format(mcolors.OKGREEN, mcolors.ENDC, sender))
+                    print("{}Unsubscribed from{}: {}".format(
+                        mcolors.OKGREEN, mcolors.ENDC, sender))
                 except urlfetch.UrlfetchException as error:
-                    print("{}Unsubscribe timeout{}: {}".format(mcolors.FAIL, mcolors.ENDC, sender))
+                    print("{}Unsubscribe timeout{}: {}".format(
+                        mcolors.FAIL, mcolors.ENDC, sender))
             else:
-                print("{}Already Unsubscribed from{}: {}".format(mcolors.OKGREEN, mcolors.ENDC, sender))
+                print("{}Already Unsubscribed from{}: {}".format(
+                    mcolors.OKGREEN, mcolors.ENDC, sender))
         else:
-            print("{}Could not unsubscribe{}: {}".format(mcolors.WARNING, mcolors.ENDC, sender))
+            print("{}Could not unsubscribe{}: {}".format(
+                mcolors.WARNING, mcolors.ENDC, sender))
 
         unlabel_message(service, msg_id, label_id)
         delete_message(service, msg_id)
-        print("    {}Finished Cleanup{}\n".format(mcolors.OKBLUE, mcolors.ENDC))
+        print("    {}Finished Cleanup{}\n".format(mcolors.OKBLUE,
+                                                  mcolors.ENDC))
 
 
 if __name__ == '__main__':
