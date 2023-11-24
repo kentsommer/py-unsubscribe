@@ -1,23 +1,37 @@
-# Automatic email unsubscriber in Python (Currently only supports Gmail)
+# Gmail Automatic Unsubscription Tool
 
-## Get an API Client ID and Secret
+This tool automates the process of unsubscribing from emails directly within Gmail using the Gmail API.
 
-1. Use [this wizard](https://console.developers.google.com/start/api?id=gmail) to create or select a project in the Google Developers Console and automatically turn on the API. Click **Continue**, then **Go to credentials**.
-2. On the **Add credentials to your project** page, click the **Cancel** button.
-3. At the top of the page, select the **OAuth consent screen** tab. Select an **Email address**, enter a **Product name** if not already set, and click the Save button.
-4. Select the **Credentials** tab, click the **Create credentials** button and select **OAuth client ID**.
-5. Select the application type **Other**, enter the name "Unsubscribe", and click the **Create** button.
-6. Click **OK** to dismiss the resulting dialog.
-7. Click the Download button to the right of the client ID.
-8. Move this file to your working directory and rename it ```client_secret.json```.
+## Setup
 
-## Usage Instructions
-1. Label any message in Gmail that you want to be unsubscribed from with the label "Unsubscribe"
-2. Run: ```pip install -r reqs.txt```
-3. Run: ```python gmail_unsubscribe.py```
+### Step 1: Google API Credentials
+- Go to the [Google Developers Console](https://console.developers.google.com/start/api?id=gmail).
+- Create or select a project.
+- Enable the Gmail API and go to `Credentials`.
+- In the `OAuth consent screen`, provide the necessary product details.
+- In the `Credentials` tab, create a new `OAuth client ID`.
+- Select the `Other` application type, name it "Unsubscribe".
+- Download your client ID and rename it to `client_secret.json`, place it in your project directory.
 
-## Output Explanation
-1. "Unsubscribed from: Sender_Name" -> Unsubscription was successful (Finished work)
-2. "Could not unsubscribe: Sender_name" -> There was no unsubscribe link in the header (Nothing to do)
-3. "Already Unsubscribed from: Sender_name" -> Already unsubscribed successfully during this session (Skipping)
-4. "Finished Cleanup" -> Removed the "Unsubscribe" label and deleted the message
+### Step 2: Installation
+- Label emails to unsubscribe with "Unsubscribe" in Gmail.
+- Install dependencies: `pip install -r requirements.txt`
+
+### Step 3: Execution
+- Run the script: `python gmail_unsubscribe.py`
+
+## What to Expect
+
+### Outputs
+- "Unsubscribed from: Sender_Name": Success.
+- "Could not unsubscribe: Sender_name": No link found.
+- "Already Unsubscribed from: Sender_name": Previously processed.
+- "Finished Cleanup": Labels and messages removed.
+
+## Contributing
+
+Feel free to fork the project, submit pull requests, or send suggestions to improve the script.
+
+---
+
+Your feedback and contributions are welcome!

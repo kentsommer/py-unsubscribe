@@ -2,23 +2,26 @@
 Unsubscribes from any email labeled "Unsubscribe"
 As long as the email contains the List Unsubscribe header
 """
-from apiclient.discovery import build
-from apiclient import errors
-from httplib2 import Http
-from oauth2client import file, client, tools
 import base64
 import quopri
 import re
-import urlfetch
+import os
+import logging
+from googleapiclient.discovery import build
+from googleapiclient.errors import HttpError
+from httplib2 import Http
+from oauth2client import file, client, tools
+import requests
 
+logging.basicConfig(level=logging.INFO,
+                    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 
-class mcolors:
-    OKBLUE = '\033[94m'
-    OKGREEN = '\033[92m'
-    WARNING = '\033[93m'
-    FAIL = '\033[91m'
-    ENDC = '\033[0m'
-
+if not os.path.isfile('credentials.json'):
+    logging.critical("🚫 Credentials file not found. Please ensure 'credentials.json' exists.")
+    exit()
+if not os.path.isfile('client_secret.json'):
+    logging.critical("🚫 Client secrets file not found. Please ensure 'client_secret.json' exists.")
+    exit()
 
 def get_gmail_service():
     SCOPES = 'https://www.googleapis.com/auth/gmail.modify'
@@ -28,134 +31,59 @@ def get_gmail_service():
         flow = client.flow_from_clientsecrets('client_secret.json', SCOPES)
         creds = tools.run_flow(flow, store)
     service = build('gmail', 'v1', http=creds.authorize(Http()))
+    logging.info("✅ Gmail service initialized successfully")
     return service
-
 
 def get_label_id(service, label_name):
     try:
         results = service.users().labels().list(userId='me').execute()
-        labels = results.get('labels', [])
-
-        for label in labels:
+        for label in results.get('labels', []):
             if label['name'] == label_name:
                 return label['id']
         return '-1'
-    except errors.HttpError as error:
-        print('An error occurred finding the label id: %s' % error)
-
+    except HttpError as error:
+        logging.error(f"🚫 An error occurred finding the label id: {error}")
 
 def get_messages_with_label(service, label_id):
     try:
-        message_dict = service.users().messages().list(
-            userId='me', labelIds=[
-                label_id,
-            ]).execute()
-        messages = message_dict.get('messages', [])
-        return messages
-    except errors.HttpError as error:
-        print('An error occurred finding messages: %s' % error)
-
+        response = service.users().messages().list(userId='me', labelIds=[label_id]).execute()
+        return response.get('messages', [])
+    except HttpError as error:
+        logging.error(f"🚫 An error occurred finding messages: {error}")
 
 def get_message(service, msg_id):
     try:
-        message = service.users().messages().get(
-            userId='me', id=msg_id, format='raw').execute()
-        msg_str = base64.urlsafe_b64decode(
-            message['raw'].encode('ASCII')).decode('utf-8', 'ignore')
+        message = service.users().messages().get(userId='me', id=msg_id, format='raw').execute()
+        msg_str = base64.urlsafe_b64decode(message['raw'].encode('ASCII')).decode('utf-8', 'ignore')
         return msg_str
-    except errors.HttpError as error:
-        print('An error occurred getting a message: %s' % error)
-
-
-def decode_mime(msg_str):
-    pattern = r'=\?{1}(.+)\?{1}([B|Q])\?{1}(.+)\?{1}='
-    match = re.search(pattern, msg_str)
-    if match:
-        charset, encoding, text = match.groups()
-        if encoding is 'B':
-            byte_string = base64.b64decode(text)
-        elif encoding is 'Q':
-            byte_string = quopri.decodestring(text)
-        return byte_string.decode(charset)
-    else:
-        return msg_str
-
-
-def get_sender(msg_str):
-    pattern = re.compile(r"^from:(.*?)\<", re.M | re.I)
-    match = pattern.search(msg_str)
-    if match:
-        sender = decode_mime(match.group(1))
-        return sender
-    return match
-
-
-def get_unsubscribe_url(msg_str):
-    pattern = re.compile(r"^list\-unsubscribe:(.|\r\n\s)+<(https?:\/\/[^>]+)>",
-                         re.M | re.I)
-    match = pattern.search(msg_str)
-    if match:
-        return match.group(2)
-    return match
-
-
-def unlabel_message(service, msg_id, label_id):
-    service.users().messages().modify(
-        userId='me', id=msg_id, body={
-            'removeLabelIds': [
-                label_id,
-            ]
-        }).execute()
-
-
-def delete_message(service, msg_id):
-    service.users().messages().trash(userId='me', id=msg_id).execute()
-
+    except HttpError as error:
+        logging.error(f"🚫 An error occurred getting a message: {error}")
 
 def unsubscribe(service, messages, label_id):
     for item in messages:
         msg_id = item['id']
-        msg = get_message(service, msg_id)
-        raw_sender = get_sender(msg)
-        sender = raw_sender.strip().replace(
-            "\"", '') if raw_sender else 'Invalid Sender'
-        url = get_unsubscribe_url(msg)
-
+        msg_str = get_message(service, msg_id)
+        url = get_unsubscribe_url(msg_str)
         if url:
-            if not sender in seen:
-                try:
-                    response = urlfetch.get(url, timeout=10)
-                    seen.add(sender)
-                    print("{}Unsubscribed from{}: {}".format(
-                        mcolors.OKGREEN, mcolors.ENDC, sender))
-                except urlfetch.UrlfetchException as error:
-                    print("{}Unsubscribe timeout{}: {}".format(
-                        mcolors.FAIL, mcolors.ENDC, sender))
-            else:
-                print("{}Already Unsubscribed from{}: {}".format(
-                    mcolors.OKGREEN, mcolors.ENDC, sender))
+            try:
+                response = requests.get(url, timeout=10)
+                logging.info(f"✅ Unsubscribed from: {url}")
+                unlabel_message(service, msg_id, label_id)
+                delete_message(service, msg_id)
+            except requests.exceptions.RequestException as e:
+                logging.warning(f"⚠️ Unsubscribe attempt failed for {url}: {e}")
         else:
-            print("{}Could not unsubscribe{}: {}".format(
-                mcolors.WARNING, mcolors.ENDC, sender))
-
-        unlabel_message(service, msg_id, label_id)
-        delete_message(service, msg_id)
-        print("    {}Finished Cleanup{}\n".format(mcolors.OKBLUE,
-                                                  mcolors.ENDC))
-
+            logging.info("🔍 No unsubscribe link found. Skipping message.")
 
 if __name__ == '__main__':
-    # Track Senders
-    seen = set()
-    # Set label
-    label = 'Unsubscribe'
-    # Get Service
     gmail = get_gmail_service()
-    # Get Unsubscribe Label ID
+    label = 'Unsubscribe'
     label_id = get_label_id(gmail, label)
-    # Get Unsubscribe messages
-    messages = get_messages_with_label(gmail, label_id)
-    while len(messages) > 0:
-        # Unsubscribe
-        unsubscribe(gmail, messages, label_id)
+    if label_id != '-1':
         messages = get_messages_with_label(gmail, label_id)
+        if messages:
+            unsubscribe(gmail, messages, label_id)
+        else:
+            logging.info("✅ No messages to unsubscribe from.")
+    else:
+        logging.warning("⚠️ Unsubscribe label not found.")
